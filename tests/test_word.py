@@ -131,12 +131,12 @@ class WordTest(BaseTest):
 
     def test_word2vec_fit(self):
         """The word2vec embeddings should be trainable from scratch."""
-        tw = TextWiser(Embedding.Word(word_option=WordOptions.word2vec, pretrained=None,
-                                      seed=1234, size=2, min_count=1, workers=1, sample=0, negative=0, hashfxn=self.hash),
+        tw = TextWiser(Embedding.Word(word_option=WordOptions.word2vec, pretrained=None, seed=1234, vector_size=2,
+                                      min_count=1, workers=1, sample=0, negative=5, hashfxn=self.hash),
                        Transformation.Pool(pool_option=PoolOptions.max), dtype=torch.float32)
-        expected = torch.tensor([[0.1895588636, 0.0169422124],
-                                 [0.1895588636, 0.0554456040],
-                                 [0.1917538643, 0.2023087442]], dtype=torch.float32)
+        expected = torch.tensor([[0.4905824959, 0.4688255489],
+                                 [0.4905824959, 0.4849084020],
+                                 [0.4857406616, 0.4849084020]], dtype=torch.float32)
         self._test_fit_transform(tw, expected)
 
     def test_tokenizer_validation(self):
@@ -271,6 +271,7 @@ class WordTest(BaseTest):
             WordOptions.char: {'is_finetuneable': True},
         }
         embedding_params = {
+            WordOptions.elmo: {'output_layer': "elmo"},
             WordOptions.xlnet: {'pretrained': 'xlnet-base-cased'},
         }
         print()
@@ -280,9 +281,11 @@ class WordTest(BaseTest):
                 continue
             if o == WordOptions.elmo:
                 try:
-                    import allennlp
+                    import tensorflow
+                    import tensorflow_hub
                 except ModuleNotFoundError:
-                    print("%s only works with AllenNLP installed. Skipping the test. ..." % o, flush=True)
+                    print("%s only works with Tensorflow and TensorflowHub installed. "
+                          "Skipping the test. ..." % o, flush=True)
                     continue
             if o == WordOptions.transformerXL and packaging.version.parse(torch.__version__) < packaging.version.parse('1.2'):
                 print("%s only works with PyTorch >= 1.2. Skipping the test. ..." % o, flush=True)
@@ -292,9 +295,10 @@ class WordTest(BaseTest):
             emb_params = embedding_params.get(o, dict())
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                tw = TextWiser(Embedding.Word(word_option=o, **emb_params), dtype=torch.float32, **tw_params).fit()
-                tw.transform(docs)
-                tw.transform(long_doc)
+                tw = TextWiser(Embedding.Word(word_option=o, **emb_params),
+                               Transformation.Pool(pool_option=PoolOptions.max), dtype=torch.float32, **tw_params).fit()
+                self.assertTrue(isinstance(tw.transform(docs), torch.Tensor))
+                self.assertTrue(isinstance(tw.transform(long_doc), torch.Tensor))
                 print('ok', flush=True)
 
     def test_inline_pool(self):

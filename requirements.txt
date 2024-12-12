@@ -1,4 +1,8 @@
-flair>=0.6.1
+numpy
+flair>=0.9
+bpemb>=0.3.5
+gensim>=4.0
+scipy<1.13
 scikit-learn>=0.23.2
 torch>=1.1.0
-transformers
+transformers>=4.0

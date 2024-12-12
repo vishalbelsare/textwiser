@@ -7,6 +7,9 @@ with open("README.md", "r") as fh:
 with open("requirements.txt") as fh:
     required = fh.read().splitlines()
 
+with open("requirements_full.txt") as fh:
+    full_reqs = fh.read().splitlines()
+
 with open(os.path.join('textwiser', '_version.py')) as fp:
     exec(fp.read())
 
@@ -20,10 +23,11 @@ setuptools.setup(
     url="https://github.com/fidelity/textwiser",
     packages=setuptools.find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     install_requires=required,
-    python_requires=">=3.6",
+    python_requires=">=3.8",
+    extras_require={"full": full_reqs},
     classifiers=[
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.8",
         "Operating System :: OS Independent",
     ],
     project_urls={

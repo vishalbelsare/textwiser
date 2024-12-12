@@ -1,4 +1,4 @@
-[![Downloads](https://static.pepy.tech/personalized-badge/textwiser?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Downloads)](https://pepy.tech/project/textwiser)
+[![ci](https://github.com/fidelity/textwiser/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/fidelity/textwiser/actions/workflows/ci.yml) [![PyPI version fury.io](https://badge.fury.io/py/textwiser.svg)](https://pypi.python.org/pypi/textwiser/) [![PyPI license](https://img.shields.io/pypi/l/textwiser.svg)](https://pypi.python.org/pypi/textwiser/) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com) [![Downloads](https://static.pepy.tech/personalized-badge/textwiser?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Downloads)](https://pepy.tech/project/textwiser)
 
 
 # TextWiser: Text Featurization Library
@@ -19,9 +19,7 @@ The [compound embedding](#compound-embedding) allows forming arbitrarily complex
 [context-free grammar](https://fidelity.github.io/textwiser/compound.html#a-context-free-grammar-of-embeddings) that defines a formal language for valid text featurization.
 * **GPU Native:** Built with GPUs in mind. If it detects available hardware, the relevant models are automatically placed on the GPU. 
  
-<br>
-
-TextWiser is developed by the Artificial Intelligence Center of Excellence at Fidelity Investments. Documentation is available at [fidelity.github.io/textwiser](https://fidelity.github.io/textwiser).
+TextWiser is developed by the Artificial Intelligence Center of Excellence at Fidelity Investments. Documentation is available at [fidelity.github.io/textwiser](https://fidelity.github.io/textwiser). Here is the [video of the paper presentation at AAAI 2021](https://slideslive.com/38951112/representing-the-unification-of-text-featurization-using-a-contextfree-grammar?ref=account-folder-75501-folders). 
  
 ## Quick Start
 
@@ -61,7 +59,7 @@ vecs = emb.fit_transform(documents)
 | Word Embedding: [Word2Vec](https://github.com/zalandoresearch/flair/blob/master/resources/docs/embeddings/CLASSIC_WORD_EMBEDDINGS.md) | Supported by these [pretrained embeddings](https://github.com/zalandoresearch/flair/blob/master/resources/docs/embeddings/CLASSIC_WORD_EMBEDDINGS.md) <br> Common pretrained options include ``crawl``, ``glove``, ``extvec``, ``twitter``, and ``en-news`` <br> When the pretrained option is ``None``, trains a new model from the given data <br> Defaults to ``en``, FastText embeddings trained on news |
 | Word Embedding: [Character](https://github.com/zalandoresearch/flair/blob/master/resources/docs/TUTORIAL_3_WORD_EMBEDDING.md#character-embeddings)| Initialized randomly and not pretrained <br> Useful when trained for a downstream task <br> Enable [fine-tuning](#fine-tuning-for-downstream-tasks) to get good embeddings |
 | Word Embedding: [BytePair](https://github.com/zalandoresearch/flair/blob/master/resources/docs/embeddings/BYTE_PAIR_EMBEDDINGS.md) | Supported by these [pretrained embeddings](https://nlp.h-its.org/bpemb/#download>) <br> Pretrained options can be specified with the string ``<lang>_<dim>_<vocab_size>`` <br> Default options can be omitted like ``en``, ``en_100``, or ``en__10000`` <br> Defaults to ``en``, which is equal to ``en_100_10000`` |
-| Word Embedding: [ELMo](https://github.com/zalandoresearch/flair/blob/master/resources/docs/embeddings/ELMO_EMBEDDINGS.md) | Supported by these [pretrained embeddings](https://github.com/zalandoresearch/flair/blob/master/resources/docs/embeddings/ELMO_EMBEDDINGS.md) from [AllenNLP](https://allennlp.org) <br> Defaults to ``original`` |
+| Word Embedding: [ELMo](https://tfhub.dev/google/elmo/3) | Supported by these [pretrained embeddings](https://tfhub.dev/google/elmo/3) from TensorflowHub <br> Defaults to ``original`` |
 | Word Embedding: [Flair](https://github.com/zalandoresearch/flair/blob/master/resources/docs/embeddings/FLAIR_EMBEDDINGS.md) |  Supported by these [pretrained embeddings](https://github.com/zalandoresearch/flair/blob/master/resources/docs/embeddings/FLAIR_EMBEDDINGS.md) <br> Defaults to ``news-forward-fast`` |
 | Word Embedding: [BERT](https://github.com/huggingface/transformers#model-architectures)| Supported by these [pretrained embeddings](https://huggingface.co/transformers/pretrained_models.html) <br> Defaults to ``bert-base-uncased`` |
 | Word Embedding: [OpenAI GPT](https://github.com/huggingface/transformers#model-architectures)| Supported by these [pretrained embeddings](https://huggingface.co/transformers/pretrained_models.html) <br> Defaults to ``openai-gpt`` |
@@ -94,7 +92,7 @@ vecs = emb.fit_transform(documents)
 Examples can be found under the [notebooks](notebooks) folder.
  
 ## Installation
-TextWiser can be installed from PyPI using ``pip install textwiser`` or by building from source by following the instructions
+TextWiser requires **Python 3.8+** and can be installed from PyPI using ``pip install textwiser``, using ``pip install textwiser[full]`` to install from PyPI with all optional dependencies, or by building from source by following the instructions
 in our [documentation](https://fidelity.github.io/textwiser/installation.html).
 
 ## Compound Embedding
@@ -118,16 +116,11 @@ in our [documentation](https://fidelity.github.io/textwiser/fine_tuning.html)
 
 ## Support
 
-Please submit bug reports and feature requests as [Issues](https://github.com/fidelity/textwiser/issues).
-You can also submit any additional questions or feedback as issues.
+Please submit bug reports, questions and feature requests as [Issues](https://github.com/fidelity/textwiser/issues).
 
 ## Citation
 
 If you use TextWiser in a publication, please cite it as:
-
-[D. Kilitcioglu and S. Kadioglu, "Representing the Unification of Text Featurization using a Context-Free Grammar"](https://ojs.aaai.org/index.php/AAAI/article/view/17814), in 2021 AAAI 35th Association for the Advancement of Artificial Intelligence, AAAI/IAAI, 2021.
-
-Here is the [video presentation of our paper at AAAI 2021](https://slideslive.com/38951112/representing-the-unification-of-text-featurization-using-a-contextfree-grammar?ref=account-folder-75501-folders). 
 
 ```bibtex
   @article{textwiser2021,

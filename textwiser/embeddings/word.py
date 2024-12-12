@@ -9,15 +9,22 @@ import flair
 from flair.data import Sentence
 from flair.embeddings import (
     WordEmbeddings as FlairWordEmbeddings,
-    ELMoEmbeddings,
     FlairEmbeddings,
     CharacterEmbeddings,
 )
 from gensim.models import Word2Vec
+import numpy as np
 import re
 import torch
 import torch.nn as nn
 from transformers import AutoTokenizer, AutoModel, AutoConfig
+
+try:
+    import tensorflow as tf
+    import tensorflow_hub as hub
+except ModuleNotFoundError:
+    pass
+
 
 from textwiser.base import BaseFeaturizer
 from textwiser.options import WordOptions, PoolOptions
@@ -33,8 +40,26 @@ def bytepair_tokenizer(docs, bp):
 
 
 def transformers_loader(pretrained, **kwargs):
+    # Ignore errors not relevant for word embeddings
+    # This is the same as flair's solution:
+    # https://github.com/flairNLP/flair/blob/016cd5273f8f3c00cac119debd1a657d5f86d761/flair/embeddings/base.py#L197
+    # Confirmed by transformers team this has always been the case, but logging is new
+    # https://github.com/huggingface/transformers/issues/5421#issuecomment-656126143
+    from transformers import logging
+    logging.set_verbosity_error()
+
     config = AutoConfig.from_pretrained(pretrained, output_hidden_states=True, **kwargs)
     return AutoTokenizer.from_pretrained(pretrained), AutoModel.from_pretrained(pretrained, config=config).to(device)
+
+
+def elmo_loader(pretrained: str, output_layer: str = "word_emb"):
+    if output_layer not in ('word_emb', 'lstm_outputs1', 'lstm_outputs2', 'elmo'):
+        raise ValueError(f"Invalid output layer: {output_layer}")
+    model = hub.KerasLayer(pretrained,
+                           trainable=False,
+                           signature="default",
+                           output_key=output_layer)
+    return model
 
 
 def bytepair_pretrained_decoder(pretrained: str):
@@ -64,7 +89,7 @@ factory = {
     WordOptions.char: CharacterEmbeddings,
     WordOptions.word2vec: FlairWordEmbeddings,
     WordOptions.flair: FlairEmbeddings,
-    WordOptions.elmo: ELMoEmbeddings,
+    WordOptions.elmo: elmo_loader,
     WordOptions.bert: transformers_loader,
     WordOptions.gpt: transformers_loader,
     WordOptions.gpt2: transformers_loader,
@@ -87,7 +112,7 @@ pretrained_parameters = {
     WordOptions.bytepair: 'pretrained',
     WordOptions.word2vec: 'embeddings',
     WordOptions.flair: 'model',
-    WordOptions.elmo: 'model',
+    WordOptions.elmo: 'pretrained',
     WordOptions.bert: 'pretrained',
     WordOptions.gpt: 'pretrained',
     WordOptions.gpt2: 'pretrained',
@@ -110,7 +135,7 @@ default_pretrained_options = {
     WordOptions.bytepair: 'en',
     WordOptions.word2vec: 'en',
     WordOptions.flair: 'news-forward-fast',
-    WordOptions.elmo: 'original',
+    WordOptions.elmo: 'https://tfhub.dev/google/elmo/3',
     WordOptions.bert: 'bert-base-uncased',
     WordOptions.gpt: 'openai-gpt',
     WordOptions.gpt2: 'gpt2-medium',
@@ -157,11 +182,18 @@ class _WordEmbeddings(BaseFeaturizer):
         self.init_args = kwargs
         self.model = None
 
-    def _set_python_embeddings(self, keyed_vectors):
-        self.vocab = keyed_vectors.vocab
+    def _set_flair_embeddings(self, embeddings: FlairWordEmbeddings):
+        self.vocab = embeddings.vocab
         self.model = nn.Embedding.from_pretrained(
-            torch.cat([torch.from_numpy(keyed_vectors.vectors),
-                       torch.zeros([1, keyed_vectors.vector_size], requires_grad=True)]),
+            embeddings.embedding.weight,
+            freeze=False, sparse=self.sparse).to(device)
+
+    def _set_gensim_embeddings(self, w2v: Word2Vec):
+        # Set it similar to Flair
+        self.vocab = w2v.key_to_index
+        self.model = nn.Embedding.from_pretrained(
+            torch.cat([torch.from_numpy(w2v.vectors),
+                       torch.zeros([1, w2v.vector_size], requires_grad=True)]),
             freeze=False, sparse=self.sparse).to(device)
 
     def _set_bytepair_embeddings(self, bp):
@@ -175,21 +207,21 @@ class _WordEmbeddings(BaseFeaturizer):
 
     def _match_word(self, word: str):
         if word in self.vocab:
-            return self.vocab[word].index
+            return self.vocab[word]
         elif word.lower() in self.vocab:
-            return self.vocab[word.lower()].index
+            return self.vocab[word.lower()]
         elif (
             re.sub(r"\d", "#", word.lower()) in self.vocab
         ):
             return self.vocab[
                 re.sub(r"\d", "#", word.lower())
-            ].index
+            ]
         elif (
             re.sub(r"\d", "0", word.lower()) in self.vocab
         ):
             return self.vocab[
                 re.sub(r"\d", "0", word.lower())
-            ].index
+            ]
         else:
             return len(self.vocab)  # oov
 
@@ -202,13 +234,13 @@ class _WordEmbeddings(BaseFeaturizer):
             if self.word_option.is_from_transformers():
                 self.tokenizer, self.model = self.model
             elif self.word_option is WordOptions.word2vec:
-                self._set_python_embeddings(self.model.precomputed_word_embeddings)
+                self._set_flair_embeddings(self.model)
             elif self.word_option is WordOptions.bytepair:
                 self._set_bytepair_embeddings(self.model)
         else:
             if self.word_option is WordOptions.word2vec:  # Word2Vec is fittable
                 w2v = Word2Vec([self.tokenizer(doc) for doc in x], **self.init_args)
-                self._set_python_embeddings(w2v.wv)
+                self._set_gensim_embeddings(w2v.wv)
             else:
                 raise NotImplementedError("A {} model cannot be trained from scratch.".format(self.word_option))
 
@@ -219,6 +251,9 @@ class _WordEmbeddings(BaseFeaturizer):
                 res = self.model(self._match_words(doc))
             elif self.word_option is WordOptions.bytepair:
                 res = self.model(self.tokenizer(doc, self.vocab))
+            elif self.word_option is WordOptions.elmo:
+                embeddings = self.model(tf.constant(self.tokenizer(doc)))
+                res = np.squeeze(embeddings.numpy())
             elif self.word_option.is_from_transformers():
                 if self.word_option == WordOptions.dialo_gpt:
                     encoded_inputs = self.tokenizer(doc, truncation=True, max_length=1024, return_tensors="pt")  # The max length for DialoGPT isn't properly configured
